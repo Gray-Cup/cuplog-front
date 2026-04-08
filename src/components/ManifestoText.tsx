@@ -10,7 +10,7 @@ export default function ManifestoText() {
         <h2
           className="font-sans font-semibold uppercase text-ink"
           style={{
-            fontSize: "clamp(2.5rem, 5vw, 4.5rem)",
+            fontSize: "clamp(1.25rem, 2.5vw, 2.25rem)",
             maxWidth: "900px",
             lineHeight: 1.1,
           }}
