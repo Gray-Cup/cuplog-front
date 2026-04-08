@@ -85,20 +85,20 @@ export default function PricingSection() {
                 {plan.price ? (
                   <div className="flex items-baseline gap-1">
                     <span
-                      className={`font-sans font-bold ${plan.featured ? "text-white" : "text-ink"}`}
+                      className={`font-sans font-bold ${plan.featured ? "text-black" : "text-ink"}`}
                       style={{ fontSize: "2.75rem", fontVariantNumeric: "tabular-nums" }}
                     >
                       {plan.price}
                     </span>
                     <span
-                      className={`font-sans text-base ${plan.featured ? "text-white" : "text-ink"}`}
+                      className={`font-sans text-base ${plan.featured ? "text-black" : "text-ink"}`}
                       style={{ opacity: 0.5 }}
                     >
                       {plan.priceNote}
                     </span>
                   </div>
                 ) : (
-                  <span className={`font-sans font-bold text-3xl ${plan.featured ? "text-white" : "text-ink"}`}>
+                  <span className={`font-sans font-bold text-3xl ${plan.featured ? "text-black" : "text-ink"}`}>
                     {plan.priceNote}
                   </span>
                 )}
@@ -113,7 +113,7 @@ export default function PricingSection() {
                 {plan.features.map((feature) => (
                   <li
                     key={feature}
-                    className={`font-sans text-base flex items-start gap-2 ${plan.featured ? "text-white" : "text-ink"}`}
+                    className={`font-sans text-base flex items-start gap-2 ${plan.featured ? "text-black" : "text-ink"}`}
                     style={{ opacity: plan.featured ? 0.8 : 0.72 }}
                   >
                     <span className="mt-0.5 shrink-0" style={{ opacity: 0.45 }}>—</span>
