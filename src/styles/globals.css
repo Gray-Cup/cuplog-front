@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+@theme {
+  /* CupLog Core Colors */
+  --color-peach: #F2C4A0;
+  --color-peach-dark: #E8A87C;
+  --color-ink: #111008;
+  --color-paper: #FDFAF5;
+  --color-rule: #D4C4B0;
+
+  /* Score / Flavour Colors */
+  --color-score-citrus: #F5E6A3;
+  --color-score-floral: #E8D5F0;
+  --color-score-nutty: #F0DEC0;
+  --color-score-fruity: #F5C4C4;
+  --color-score-cocoa: #D4C0B0;
+  --color-score-green: #C8DDB8;
+}
+
+@theme inline {
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-size: 18px;
+    background-color: #FDFAF5;
+    color: #111008;
+    font-family: var(--font-sans), 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ── Hero text size ── */
+@layer utilities {
+  .text-hero {
+    font-size: clamp(4rem, 9vw, 8rem);
+    line-height: 0.95;
+  }
+
+  .text-hero-sm {
+    font-size: clamp(2.5rem, 10vw, 4rem);
+    line-height: 0.95;
+  }
+
+  .tracking-label {
+    letter-spacing: 0.12em;
+  }
+
+  .leading-hero {
+    line-height: 0.95;
+  }
+}
+
+/* ── Nav underline animation ── */
+.nav-link {
+  position: relative;
+  text-decoration: none;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: #111008;
+  transition: width 0.2s ease;
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+/* ── Marquee ── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  display: flex;
+  gap: 3rem;
+  animation: marquee 40s linear infinite;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+/* ── Hero animations ── */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-headline {
+  animation: fadeUp 0.6s ease forwards;
+  animation-delay: 0.1s;
+  opacity: 0;
+}
+
+.hero-sub {
+  animation: fadeUp 0.6s ease forwards;
+  animation-delay: 0.3s;
+  opacity: 0;
+}
+
+.hero-ctas {
+  animation: fadeUp 0.6s ease forwards;
+  animation-delay: 0.5s;
+  opacity: 0;
+}
+
+/* ── Session card hover ── */
+.session-card:hover {
+  opacity: 0.92;
+  transition: opacity 0.2s ease;
+}
+
+/* ── Selection ── */
+::selection {
+  background: #F2C4A0;
+  color: #111008;
+}
