@@ -139,7 +139,7 @@ export default function AboutPage() {
               className="inline-flex items-center gap-2 font-sans font-semibold text-sm text-ink bg-white px-8 py-4 border border-ink"
               style={{ borderRadius: 0 }}
             >
-              View pricing →
+              View pricing
             </a>
           </div>
         </div>

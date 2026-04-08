@@ -30,14 +30,14 @@ export default function HeroSection() {
               className="inline-flex items-center gap-2 font-sans font-semibold text-sm text-white bg-ink px-8 py-4 border border-ink"
               style={{ borderRadius: 0 }}
             >
-              Start for free →
+              Start Cupping (Test Mode)
             </a>
             <a
               href="/#how-it-works"
               className="inline-flex items-center gap-2 font-sans font-semibold text-sm text-ink bg-white px-8 py-4 border border-ink"
               style={{ borderRadius: 0 }}
             >
-              See how it works →
+              Pricing
             </a>
           </div>
         </div>
