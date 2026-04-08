@@ -11,12 +11,12 @@ export default function HeroSection() {
         style={{ maxWidth: "1024px", margin: "0 auto", minHeight: "inherit" }}
       >
         <div className="max-w-3xl">
-          <h1 className="font-sans font-semibold uppercase text-hero text-ink hero-headline" style={{ lineHeight: 0.95 }}>
+          <h1 className="font-sans font-semibold uppercase text-hero text-ink" style={{ lineHeight: 0.95 }}>
             Score every<br />cup.
           </h1>
 
           <p
-            className="font-sans text-lg text-ink hero-sub mt-8"
+            className="font-sans text-lg text-ink mt-8"
             style={{ maxWidth: "520px", opacity: 0.85 }}
           >
             The cupping log built for people who care what's in their cup.
@@ -24,7 +24,7 @@ export default function HeroSection() {
             SCA-standard scoring forms.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 mt-10 hero-ctas">
+          <div className="flex flex-col sm:flex-row gap-4 mt-10">
             <a
               href="https://app.cuplog.app/sign-up"
               className="inline-flex items-center gap-2 font-sans font-semibold text-sm text-white bg-ink px-8 py-4 border border-ink"

@@ -126,15 +126,6 @@ export default function SessionGrid() {
             </div>
           ))}
         </div>
-
-        <div className="px-6 md:px-10 pb-14 pt-6">
-          <a
-            href="https://app.cuplog.app/sign-up"
-            className="font-sans text-sm font-semibold text-ink uppercase tracking-label"
-          >
-            All Sessions →
-          </a>
-        </div>
       </div>
     </section>
   );

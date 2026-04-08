@@ -5,25 +5,21 @@ const categories = [
     title: "Cupping Sessions",
     description:
       "Log every session with SCA-standard scoring forms. Add your coffees, origin, process, and roast details in seconds.",
-    cta: "Start logging →",
   },
   {
     title: "Score History",
     description:
       "Track your scores over time and see how your palate develops. Visualise trends, compare coffees, spot patterns.",
-    cta: "View history →",
   },
   {
     title: "Flavour Wheel",
     description:
       "Visual tasting notes with the full SCA flavour wheel built in. Tag every session with precise descriptor vocabulary.",
-    cta: "Explore wheel →",
   },
   {
     title: "Team Cuppings",
     description:
       "Invite your team. Score together. Compare results and discuss every attribute across your whole tasting panel.",
-    cta: "Invite team →",
   },
 ];
 
@@ -52,12 +48,6 @@ export default function CategoryTiles() {
               <p className="font-sans text-base text-ink mt-4 leading-relaxed" style={{ opacity: 0.7 }}>
                 {cat.description}
               </p>
-              <a
-                href="https://app.cuplog.app/sign-up"
-                className="inline-block font-sans text-sm font-semibold text-ink mt-6 border-b border-ink pb-0.5"
-              >
-                {cat.cta}
-              </a>
             </div>
           ))}
         </div>

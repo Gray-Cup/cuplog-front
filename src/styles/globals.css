@@ -93,35 +93,6 @@
   will-change: transform;
 }
 
-/* ── Hero animations ── */
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.hero-headline {
-  animation: fadeUp 0.6s ease forwards;
-  animation-delay: 0.1s;
-  opacity: 0;
-}
-
-.hero-sub {
-  animation: fadeUp 0.6s ease forwards;
-  animation-delay: 0.3s;
-  opacity: 0;
-}
-
-.hero-ctas {
-  animation: fadeUp 0.6s ease forwards;
-  animation-delay: 0.5s;
-  opacity: 0;
-}
 
 /* ── Session card hover ── */
 .session-card:hover {
