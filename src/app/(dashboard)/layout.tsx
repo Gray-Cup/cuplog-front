@@ -29,7 +29,6 @@ const MockNavbar = () => {
       <div id="brand" className="h-full md:border-r border-dashed w-[260px] flex items-center justify-center">
         <Button variant="ghost" className="w-full h-full font-heading text-lg md:text-2xl font-bold gap-2.5" asChild>
           <Link href="/">
-            <CupLogMark />
             <span>CupLog</span>
           </Link>
         </Button>

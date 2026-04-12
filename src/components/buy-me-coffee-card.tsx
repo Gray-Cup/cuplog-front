@@ -12,7 +12,7 @@ export function BuyMeCoffeeCard({
   coffeeUrl,
 }: BuyMeCoffeeCardProps) {
   return (
-    <div className="w-full border border-neutral-200 rounded-lg p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-amber-50 hover:bg-amber-100 transition-colors">
+    <div className="w-full border border-neutral-200 rounded-full p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-amber-50 hover:bg-amber-100 transition-colors">
       <div className="flex items-start gap-3">
         <div className="bg-amber-500 p-2 rounded-full flex items-center justify-center">
           <CoffeeIcon className="h-6 w-6 text-white" />

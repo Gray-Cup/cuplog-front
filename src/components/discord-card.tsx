@@ -12,7 +12,7 @@ export function DiscordCard({
   joinServerUrl,
 }: DiscordCardProps) {
   return (
-    <div className="w-full border border-neutral-200 rounded-lg p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#5865F2]/5 hover:bg-[#5865F2]/10 transition-colors">
+    <div className="w-full border border-neutral-200 rounded-full p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#5865F2]/5 hover:bg-[#5865F2]/10 transition-colors">
       <div className="flex items-start gap-3">
         <div className="bg-[#5865F2] p-2 rounded-full flex items-center justify-center">
           <DiscordLogo className="h-6 w-6 text-white" />

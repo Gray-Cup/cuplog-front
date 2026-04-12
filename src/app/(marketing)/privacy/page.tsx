@@ -69,7 +69,7 @@ export default function PrivacyPolicy() {
 
         <h2 className="text-xl font-semibold text-neutral-800 mt-8 mb-4">Contact Us</h2>
         <p className="mb-4">
-          If you have any questions about this Privacy Policy, please contact us via <a href="mailto:meow@nermalcat69.com" className="text-blue-700 underline">meow@nermalcat69.com</a>.
+          If you have any questions about this Privacy Policy, please contact us via <a href="mailto:office@graycup.org" className="text-blue-700 underline">office@graycup.org</a>.
         </p>
       </div>
     </div>

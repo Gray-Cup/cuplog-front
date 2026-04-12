@@ -15,9 +15,9 @@ export function FileCard({
   downloadUrl,
 }: FileCardProps) {
   return (
-    <div className="w-full border border-neutral-200 rounded-lg p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/50 hover:bg-white transition-colors">
+    <div className="w-full border border-neutral-200 rounded-full p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/50 hover:bg-white transition-colors">
       <div className="flex items-start gap-3">
-        <div className="bg-neutral-100 p-2 rounded-md flex items-center justify-center">
+        <div className="bg-neutral-100 p-2 rounded-full flex items-center justify-center">
           <FileText className="h-6 w-6 text-neutral-800" />
         </div>
         <div className="flex-1">

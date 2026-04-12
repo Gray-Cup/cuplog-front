@@ -6,9 +6,6 @@ export default function Home() {
     <div className="w-full">
       {/* Hero */}
       <section className="py-10 md:py-16 text-center border-b border-dashed border-neutral-200">
-        <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
-          SCA-standard cupping · digital · precise
-        </p>
         <h1 className="text-3xl md:text-5xl font-bold text-neutral-900 font-heading tracking-tight mb-4">
           SCA cup scoring,<br />simplified.
         </h1>
@@ -40,7 +37,6 @@ export default function Home() {
       {/* How SCA scoring works */}
       <section id="how-it-works" className="py-10 border-b border-dashed border-neutral-200">
         <div className="max-w-4xl mx-auto">
-          <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">The method</p>
           <h2 className="text-xl md:text-2xl font-bold text-neutral-900 font-heading mb-1">How SCA cup scoring works</h2>
           <p className="text-sm text-muted-foreground mb-7 max-w-2xl">
             Standardized method used by roasters, buyers, and Q-graders. Each attribute scored 6.00–10.00 in 0.25 increments.
@@ -114,7 +110,6 @@ export default function Home() {
       {/* Score interpretation */}
       <section className="py-10 border-b border-dashed border-neutral-200">
         <div className="max-w-4xl mx-auto">
-          <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">Interpretation</p>
           <h2 className="text-xl md:text-2xl font-bold text-neutral-900 font-heading mb-5">What the score means</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-neutral-200 border border-neutral-200">
             {[
@@ -135,35 +130,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* What CupLog is */}
-      <section className="py-10 border-b border-dashed border-neutral-200">
-        <div className="max-w-4xl mx-auto">
-          <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">The product</p>
-          <h2 className="text-xl md:text-2xl font-bold text-neutral-900 font-heading mb-2">
-            A quality control system, not just a scoring tool.
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-2xl mb-6">
-            CupLog replaces paper SCA forms and adds workflow and analytics for roasters, buyers, and Q-graders.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-neutral-200 border border-neutral-200">
-            {[
-              { title: "Digital cupping forms", body: "Input scores directly. Totals calculate automatically. No transcription errors from paper." },
-              { title: "Session & batch management", body: "Create sessions, add multiple coffees, store origin, variety, and roast metadata." },
-              { title: "Multi-cupper averaging", body: "Multiple users score independently. CupLog averages scores to reduce individual bias." },
-              { title: "Quality analytics", body: "Track scores across batches, monitor consistency, and make better roasting decisions." },
-            ].map((item) => (
-              <div key={item.title} className="bg-white p-4">
-                <h3 className="font-semibold text-sm text-neutral-800 mb-1">{item.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{item.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA */}
       <section className="py-12 text-center">
-        <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">Ready to cup?</p>
         <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 font-heading mb-3">
           Clean cupping. Zero clutter.
         </h2>

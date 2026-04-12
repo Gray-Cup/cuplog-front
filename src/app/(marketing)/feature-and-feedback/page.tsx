@@ -76,7 +76,7 @@ export default function FeatureAndFeedback() {
         <h1 className="text-3xl font-semibold text-neutral-800 mb-12 text-center">Feature Requests & Feedback</h1>
         
         {isSubmitted ? (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+          <div className="bg-green-50 border border-green-200 rounded-full p-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
               <CheckIcon className="h-6 w-6 text-green-600" />
             </div>
@@ -92,7 +92,7 @@ export default function FeatureAndFeedback() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-white border border-neutral-200 rounded-lg p-6 space-y-6">
+            <div className="bg-white border border-neutral-200 rounded-full p-6 space-y-6">
               <div className="space-y-2">
                 <Label className="text-base">What would you like to submit?</Label>
                 <RadioGroup 
@@ -153,7 +153,7 @@ export default function FeatureAndFeedback() {
                 />
               </div>
               {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-md text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-full text-sm">
                 {error}
               </div>
             )}

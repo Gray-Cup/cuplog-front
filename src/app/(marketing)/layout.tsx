@@ -15,12 +15,14 @@ export default function MarketingLayout({
         <div className="flex h-16 items-center justify-between max-w-4xl mx-auto px-4 lg:px-6">
           <div className="flex items-center gap-6">
             <Link href="/" className="font-semibold flex items-center gap-3">
-              <CupLogMark />
               <span className="text-md font-bold text-neutral-800 font-heading">CupLog</span>
             </Link>
             <nav className="hidden text-sm md:flex gap-6">
-              <Link href="/feature-and-feedback" className="text-muted-foreground hover:text-foreground transition-colors">
-                Feedback
+              <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
+                Pricing
+              </Link>
+              <Link href="https://graycup.org" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
+                Developed by Gray Cup
               </Link>
             </nav>
           </div>
@@ -40,8 +42,9 @@ export default function MarketingLayout({
 
       {/* Footer */}
       <footer className="bg-[#FBFBFB]">
-        <div className="max-w-3xl mx-auto px-4 lg:px-6 py-6 flex items-center justify-between text-sm text-muted-foreground">
+        <div className="max-w-3xl mx-auto px-4 lg:px-6 py-6 flex items-center justify-between text-sm text-muted-foreground relative">
           <span>© {new Date().getFullYear()} CupLog</span>
+          <span className="absolute left-1/2 -translate-x-1/2 text-xs text-muted-foreground">made with love in india</span>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
