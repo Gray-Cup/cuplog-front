@@ -181,7 +181,7 @@ export default function PricingPage() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Button variant="outline" asChild className="border-dashed text-sm px-4 h-9">
-              <a href="https://github.com/Gray-Cup/cuplog-front" target="_blank" rel="noopener noreferrer">
+              <a href="https://github.com/Gray-Cup/cuplog" target="_blank" rel="noopener noreferrer">
                 View on GitHub
               </a>
             </Button>

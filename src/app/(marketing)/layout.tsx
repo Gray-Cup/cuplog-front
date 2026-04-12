@@ -27,7 +27,7 @@ export default function MarketingLayout({
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <GitHubWidget repo="Gray-Cup/cuplog-front" stars="100" />
+            <GitHubWidget repo="Gray-Cup/cuplog" stars="100" />
             <MarketingNavButtons />
           </div>
         </div>
