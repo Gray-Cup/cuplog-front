@@ -1,15 +1,14 @@
+import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
-export const getSession = async () => {
-    const session = await auth.api.getSession({
-        headers: await headers()
-    })
+// cache() deduplicates calls within a single request — layout, page, and any
+// server components that call getUser all share one auth DB round-trip.
+export const getSession = cache(async () => {
+  return auth.api.getSession({ headers: await headers() });
+});
 
-    return session;
-}
-
-export const getUser = async () => {
-    const session = await getSession();
-    return session?.user;
-}
+export const getUser = cache(async () => {
+  const session = await getSession();
+  return session?.user;
+});

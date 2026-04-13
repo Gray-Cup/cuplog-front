@@ -1,10 +1,11 @@
 import { getUser } from "@/lib/auth-utils";
+import { getDashboardStats } from "./samples/actions";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
 export default async function DashboardPage() {
-  const user = await getUser();
+  const [user, stats] = await Promise.all([getUser(), getDashboardStats()]);
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 space-y-10">
@@ -26,10 +27,10 @@ export default async function DashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-8">
-        <Stat label="Sessions" value="0" />
-        <Stat label="Coffees cupped" value="0" />
-        <Stat label="Avg score" value="—" />
-        <Stat label="This month" value="0" />
+        <Stat label="Samples" value={String(stats.total)} />
+        <Stat label="Cupped" value={String(stats.cupped)} />
+        <Stat label="Avg score" value={stats.avgScore !== null ? stats.avgScore.toFixed(2) : "—"} />
+        <Stat label="This month" value={String(stats.thisMonth)} />
       </div>
 
       {/* Recent sessions */}
