@@ -97,7 +97,7 @@ export async function createSample(data: {
     })
     .returning();
 
-  revalidateTag(samplesTag(user.id));
+  revalidateTag(samplesTag(user.id), "default");
   revalidatePath("/dashboard");
   return row;
 }
@@ -134,7 +134,7 @@ export async function saveCuppingSession(
     })
     .where(and(eq(sample.id, id), eq(sample.userId, user.id)));
 
-  revalidateTag(samplesTag(user.id));
+  revalidateTag(samplesTag(user.id), "default");
   revalidatePath("/dashboard");
 }
 
@@ -150,7 +150,7 @@ export async function updateSamplePhotos(
     .set({ photos, updatedAt: new Date() })
     .where(and(eq(sample.id, id), eq(sample.userId, user.id)));
 
-  revalidateTag(samplesTag(user.id));
+  revalidateTag(samplesTag(user.id), "default");
 }
 
 export async function deleteSample(id: string): Promise<void> {
@@ -161,6 +161,6 @@ export async function deleteSample(id: string): Promise<void> {
     .delete(sample)
     .where(and(eq(sample.id, id), eq(sample.userId, user.id)));
 
-  revalidateTag(samplesTag(user.id));
+  revalidateTag(samplesTag(user.id), "default");
   revalidatePath("/dashboard");
 }
