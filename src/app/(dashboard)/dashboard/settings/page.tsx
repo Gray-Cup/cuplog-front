@@ -2,12 +2,14 @@ import { getUser } from "@/lib/auth-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AvatarUpload } from "./_avatar-upload";
+import Link from "next/link";
 
 export default async function SettingsPage() {
   const user = await getUser();
 
   return (
-    <div className="max-w-lg px-6 py-8 space-y-10">
+    <div className="max-w-lg mx-auto px-6 py-8 space-y-10">
       <div>
         <h1 className="text-2xl font-bold font-heading text-neutral-900">Settings</h1>
         <p className="text-sm text-neutral-500 mt-1">
@@ -19,8 +21,8 @@ export default async function SettingsPage() {
       <section className="space-y-5">
         <div>
           <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-wide">Account</h2>
-          <p className="text-xs text-neutral-400 mt-0.5">Your profile from OAuth sign-in. Read-only.</p>
         </div>
+        <AvatarUpload currentImage={user?.image} name={user?.name} />
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-sm text-neutral-600">Name</Label>
@@ -107,9 +109,9 @@ export default async function SettingsPage() {
         <p>CupLog — SCA cup scoring, simplified.</p>
         <p>
           Questions?{" "}
-          <a href="/feature-and-feedback" className="underline hover:text-neutral-600 transition-colors">
+          <Link href="/feature-and-feedback" className="underline hover:text-neutral-600 transition-colors">
             Send feedback.
-          </a>
+          </Link>
         </p>
       </div>
     </div>

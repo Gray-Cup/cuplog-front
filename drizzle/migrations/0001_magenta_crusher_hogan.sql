@@ -1,0 +1,30 @@
+CREATE TABLE "sample" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"name" text NOT NULL,
+	"origin" text DEFAULT '—' NOT NULL,
+	"variety" text DEFAULT '—' NOT NULL,
+	"process" text DEFAULT '—' NOT NULL,
+	"roast" text DEFAULT '—' NOT NULL,
+	"date_received" text NOT NULL,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"photos" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"fragrance" text,
+	"flavor" text,
+	"aftertaste" text,
+	"acidity" text,
+	"body" text,
+	"balance" text,
+	"overall" text,
+	"uniformity" text,
+	"clean_cup" text,
+	"sweetness" text,
+	"taints" text,
+	"faults" text,
+	"notes" text,
+	"final_score" text,
+	"created_at" timestamp NOT NULL,
+	"updated_at" timestamp NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "sample" ADD CONSTRAINT "sample_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
