@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function AuthCard({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up" }) {
   const [name, setName] = useState("");
@@ -16,6 +17,7 @@ export default function AuthCard({ mode = "sign-in" }: { mode?: "sign-in" | "sig
   const [error, setError] = useState<string | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const router = useRouter();
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,20 +26,13 @@ export default function AuthCard({ mode = "sign-in" }: { mode?: "sign-in" | "sig
 
     try {
       if (mode === "sign-up") {
-        const { error } = await signUp.email({
-          name,
-          email,
-          password,
-          callbackURL: "/dashboard",
-        });
+        const { error } = await signUp.email({ name, email, password });
         if (error) setError(error.message ?? "Sign up failed.");
+        else router.push("/dashboard");
       } else {
-        const { error } = await signIn.email({
-          email,
-          password,
-          callbackURL: "/dashboard",
-        });
+        const { error } = await signIn.email({ email, password });
         if (error) setError(error.message ?? "Sign in failed. Check your credentials.");
+        else router.push("/dashboard");
       }
     } finally {
       setEmailLoading(false);
