@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,14 +40,12 @@ export function UserProfile({ className }: { className?: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className={cn("size-14 aspect-square p-2 md:p-3", signingOut && "animate-pulse", className)} asChild>
-          <Avatar>
-            <AvatarImage src={session.user.image ?? ""} alt={session.user.name ?? ""} className="rounded-full" />
-            <AvatarFallback className="rounded-full">{session.user.name?.charAt(0)}</AvatarFallback>
-          </Avatar>
-        </Button>
+        <Avatar className={cn("size-10 cursor-pointer", signingOut && "animate-pulse", className)}>
+          <AvatarImage src={session.user.image ?? ""} alt={session.user.name ?? ""} className="rounded-full" />
+          <AvatarFallback className="rounded-full">{session.user.name?.charAt(0)}</AvatarFallback>
+        </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[250px]">
+      <DropdownMenuContent className="w-[250px]" align="end">
         <div className="p-4 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex flex-col">
