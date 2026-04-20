@@ -119,6 +119,7 @@ export async function saveCuppingSession(
     faults: string;
     notes: string;
   },
+  descriptors: { label: string; family: string }[],
   finalScore: number
 ): Promise<void> {
   const user = await getUser();
@@ -128,6 +129,7 @@ export async function saveCuppingSession(
     .update(sample)
     .set({
       ...scores,
+      descriptors,
       finalScore: String(finalScore),
       status: "complete",
       updatedAt: new Date(),

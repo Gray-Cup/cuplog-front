@@ -78,6 +78,10 @@ export const sample = pgTable("sample", {
   taints: text("taints"),
   faults: text("faults"),
   notes: text("notes"),
+  descriptors: jsonb("descriptors")
+    .$type<{ label: string; family: string }[]>()
+    .default(sql`'[]'::jsonb`)
+    .notNull(),
   finalScore: text("final_score"),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at").notNull(),

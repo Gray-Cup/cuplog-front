@@ -1,18 +1,27 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useState, useRef, useTransition, useEffect, useMemo, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, ArrowLeft, FlaskConical, ImageIcon, X, Loader2 } from "lucide-react";
+import {
+  Plus, ArrowLeft, FlaskConical, ImageIcon, X, Loader2,
+  Download, Search, ChevronDown,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { SampleRow } from "./actions";
-import {
-  createSample,
-  saveCuppingSession,
-  deleteSample,
-} from "./actions";
+import { createSample, saveCuppingSession, deleteSample } from "./actions";
 import { useUploadThing } from "@/lib/uploadthing";
+import { FlavorWheel } from "@/components/flavor-wheel";
+import {
+  DESCRIPTOR_FAMILIES,
+  type DescriptorTag,
+  type StoredDescriptor,
+  chipClasses,
+  familyColor,
+  computeFamilyCounts,
+  parseStoredDescriptors,
+} from "@/lib/descriptors";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,43 +92,175 @@ function computeScore(scores: Scores): number | null {
     parseFloat(scores.uniformity) +
     parseFloat(scores.cleanCup) +
     parseFloat(scores.sweetness);
-  const defects =
-    parseInt(scores.taints) * 2 + parseInt(scores.faults) * 4;
+  const defects = parseInt(scores.taints) * 2 + parseInt(scores.faults) * 4;
   return attrSum + checks - defects;
 }
 
-function scoreTier(score: number): { label: string; className: string } {
-  if (score >= 90) return { label: "Outstanding", className: "text-neutral-900 font-semibold" };
-  if (score >= 85) return { label: "Excellent", className: "text-neutral-700 font-semibold" };
-  if (score >= 80) return { label: "Very Good", className: "text-neutral-500 font-semibold" };
-  return { label: "Not specialty", className: "text-neutral-400" };
+function scoreTier(score: number): { label: string; color: string } {
+  if (score >= 90) return { label: "Outstanding", color: "#8B5CF6" };
+  if (score >= 85) return { label: "Excellent", color: "#22C55E" };
+  if (score >= 80) return { label: "Very Good", color: "#F59E0B" };
+  return { label: "Not specialty", color: "#9ca3af" };
 }
 
-// ─── Photo Upload Component ───────────────────────────────────────────────────
+function sampleDescriptors(s: SampleRow): DescriptorTag[] {
+  const raw = (s.descriptors ?? []) as StoredDescriptor[];
+  return parseStoredDescriptors(raw);
+}
 
-function PhotoUploader({
-  photos,
-  onChange,
+// ─── Export Helpers ───────────────────────────────────────────────────────────
+
+async function downloadPNG(el: HTMLElement, filename: string) {
+  const { toPng } = await import("html-to-image");
+  const dataUrl = await toPng(el, { quality: 0.98, pixelRatio: 2 });
+  const a = document.createElement("a");
+  a.download = filename;
+  a.href = dataUrl;
+  a.click();
+}
+
+async function downloadPDF(el: HTMLElement, filename: string) {
+  const { toPng } = await import("html-to-image");
+  const { jsPDF } = await import("jspdf");
+  const dataUrl = await toPng(el, { quality: 0.98, pixelRatio: 2 });
+  const img = new Image();
+  img.src = dataUrl;
+  await new Promise<void>((r) => { img.onload = () => r(); });
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: [w, h] });
+  pdf.addImage(dataUrl, "PNG", 0, 0, w, h);
+  pdf.save(filename);
+}
+
+// ─── Export Card (off-screen, captured for download) ─────────────────────────
+
+function ExportCard({
+  sample: s,
+  scores,
+  descriptors,
+  liveScore,
 }: {
-  photos: string[];
-  onChange: (photos: string[]) => void;
+  sample: SampleRow;
+  scores: Scores;
+  descriptors: DescriptorTag[];
+  liveScore: number | null;
 }) {
+  const familyCounts = useMemo(() => computeFamilyCounts(descriptors), [descriptors]);
+  const finalScore = liveScore ?? (s.finalScore ? parseFloat(s.finalScore) : null);
+  const topDescriptors = descriptors.slice(0, 6);
+  const date = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const tier = finalScore ? scoreTier(finalScore) : null;
+
+  return (
+    <div
+      style={{
+        width: 480,
+        background: "#ffffff",
+        fontFamily: "Inter, system-ui, sans-serif",
+        overflow: "hidden",
+        borderRadius: 16,
+      }}
+    >
+      {/* Header bar */}
+      <div style={{ background: "#f8f7ff", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e", letterSpacing: "-0.01em" }}>CupLog</span>
+        <span style={{ fontSize: 12, color: "#9ca3af" }}>{date}</span>
+      </div>
+
+      {/* Content */}
+      <div style={{ padding: "28px 32px 32px" }}>
+        {/* Coffee name */}
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <p style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 4, lineHeight: 1.3 }}>
+            {s.name}
+          </p>
+          <p style={{ fontSize: 13, color: "#9ca3af" }}>
+            {[s.origin, s.variety, s.process, s.roast].filter(v => v && v !== "—").join(" · ")}
+          </p>
+        </div>
+
+        {/* Flavor Wheel */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+          <FlavorWheel familyCounts={familyCounts} size={200} showLabels={true} />
+        </div>
+
+        {/* Descriptors */}
+        {topDescriptors.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 24 }}>
+            {topDescriptors.map((d) => (
+              <span
+                key={d.id}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "3px 10px",
+                  borderRadius: 999,
+                  border: "1px solid",
+                  borderColor: familyColor(d.family) + "40",
+                  backgroundColor: familyColor(d.family) + "18",
+                  color: familyColor(d.family),
+                }}
+              >
+                {d.label}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Score */}
+        {finalScore !== null && (
+          <div style={{ textAlign: "center", padding: "20px 0", borderTop: "1px solid #f3f4f6", borderBottom: "1px solid #f3f4f6" }}>
+            <p style={{ fontSize: 11, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+              Final Score
+            </p>
+            <p style={{ fontSize: 52, fontWeight: 800, color: "#111827", lineHeight: 1, marginBottom: 6, fontVariantNumeric: "tabular-nums" }}>
+              {finalScore.toFixed(2)}
+            </p>
+            {tier && (
+              <p style={{ fontSize: 14, fontWeight: 600, color: tier.color }}>
+                {tier.label}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* SCA breakdown */}
+        <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 24px" }}>
+          {SCA_ATTRS.map((attr) => {
+            const val = scores[attr.key as keyof Scores];
+            if (!val) return null;
+            return (
+              <div key={attr.key} style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 11, color: "#6b7280" }}>{attr.label}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#111827", fontVariantNumeric: "tabular-nums" }}>
+                  {parseFloat(val).toFixed(2)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Photo Uploader ───────────────────────────────────────────────────────────
+
+function PhotoUploader({ photos, onChange }: { photos: string[]; onChange: (p: string[]) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const { startUpload } = useUploadThing("samplePhoto");
 
   async function handleFiles(files: FileList | null) {
     if (!files) return;
-    const remaining = MAX_PHOTOS - photos.length;
-    const toUpload = Array.from(files).slice(0, remaining);
+    const toUpload = Array.from(files).slice(0, MAX_PHOTOS - photos.length);
     if (!toUpload.length) return;
-
     setUploading(true);
     try {
       const uploaded = await startUpload(toUpload);
       if (!uploaded) throw new Error("Upload failed");
-      const urls = uploaded.map((f) => f.ufsUrl);
-      onChange([...photos, ...urls]);
+      onChange([...photos, ...uploaded.map((f) => f.ufsUrl)]);
     } catch {
       toast.error("Failed to upload photo");
     } finally {
@@ -140,33 +281,18 @@ function PhotoUploader({
             disabled={uploading}
             className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-800 transition-colors disabled:opacity-50"
           >
-            {uploading ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : (
-              <ImageIcon className="size-3" />
-            )}
+            {uploading ? <Loader2 className="size-3 animate-spin" /> : <ImageIcon className="size-3" />}
             Add photo
           </button>
         )}
       </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
-      />
+      <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
       {photos.length > 0 && (
         <div className="flex gap-2 flex-wrap">
           {photos.map((url, i) => (
             <div key={i} className="relative group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={url}
-                alt={`Sample photo ${i + 1}`}
-                className="size-16 object-cover rounded border border-neutral-200"
-              />
+              <img src={url} alt={`photo ${i + 1}`} className="size-16 object-cover rounded-lg border border-neutral-200" />
               <button
                 type="button"
                 onClick={() => onChange(photos.filter((_, j) => j !== i))}
@@ -182,18 +308,675 @@ function PhotoUploader({
   );
 }
 
+// ─── Descriptor Chip ──────────────────────────────────────────────────────────
+
+function DescriptorChip({ descriptor, onRemove }: { descriptor: DescriptorTag; onRemove?: () => void }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${chipClasses(descriptor.family)}`}
+    >
+      {descriptor.label}
+      {onRemove && (
+        <button type="button" onClick={onRemove} className="opacity-60 hover:opacity-100 transition-opacity ml-0.5">
+          <X className="size-2.5" />
+        </button>
+      )}
+    </span>
+  );
+}
+
+// ─── Descriptor Picker ────────────────────────────────────────────────────────
+
+function DescriptorPicker({
+  descriptors,
+  onChange,
+}: {
+  descriptors: DescriptorTag[];
+  onChange: (d: DescriptorTag[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [activeFamily, setActiveFamily] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) setTimeout(() => searchRef.current?.focus(), 50);
+  }, [open]);
+
+  const selectedSet = useMemo(() => new Set(descriptors.map((d) => d.label)), [descriptors]);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q && !activeFamily) return null;
+    const results: { label: string; family: string; category: string }[] = [];
+    for (const fam of DESCRIPTOR_FAMILIES) {
+      if (activeFamily && fam.key !== activeFamily) continue;
+      for (const group of fam.items) {
+        for (const label of group.descriptors) {
+          if (!q || label.toLowerCase().includes(q)) {
+            results.push({ label, family: fam.key, category: group.category });
+          }
+        }
+      }
+    }
+    return results;
+  }, [search, activeFamily]);
+
+  function addDescriptor(label: string, family: string) {
+    if (selectedSet.has(label)) return;
+    onChange([...descriptors, { id: crypto.randomUUID(), label, family }]);
+  }
+
+  function removeDescriptor(id: string) {
+    onChange(descriptors.filter((d) => d.id !== id));
+  }
+
+  const displayFamily = activeFamily
+    ? DESCRIPTOR_FAMILIES.find((f) => f.key === activeFamily)
+    : null;
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Selected chips */}
+      <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
+        {descriptors.map((d) => (
+          <DescriptorChip key={d.id} descriptor={d} onRemove={() => removeDescriptor(d.id)} />
+        ))}
+      </div>
+
+      {/* Add button */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-800 border border-dashed border-neutral-300 hover:border-neutral-400 rounded-full px-3 py-1 transition-colors"
+      >
+        <Plus className="size-3" />
+        Add flavor note
+        <ChevronDown className="size-3 opacity-60" />
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute top-full left-0 mt-1.5 z-50 bg-white border border-neutral-200 rounded-xl shadow-lg w-80 overflow-hidden">
+          {/* Search */}
+          <div className="p-2 border-b border-neutral-100">
+            <div className="flex items-center gap-2 bg-neutral-50 rounded-lg px-2.5 py-1.5">
+              <Search className="size-3.5 text-neutral-400 shrink-0" />
+              <input
+                ref={searchRef}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search descriptors…"
+                className="flex-1 text-xs bg-transparent outline-none text-neutral-800 placeholder:text-neutral-400"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="text-neutral-400 hover:text-neutral-600">
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Family tabs */}
+          {!search && (
+            <div className="flex gap-1 p-2 overflow-x-auto border-b border-neutral-100 no-scrollbar">
+              <button
+                onClick={() => setActiveFamily(null)}
+                className={`shrink-0 text-[10px] font-medium px-2 py-1 rounded-full transition-colors ${
+                  !activeFamily
+                    ? "bg-neutral-900 text-white"
+                    : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+                }`}
+              >
+                All
+              </button>
+              {DESCRIPTOR_FAMILIES.map((fam) => (
+                <button
+                  key={fam.key}
+                  onClick={() => setActiveFamily(fam.key === activeFamily ? null : fam.key)}
+                  className="shrink-0 text-[10px] font-medium px-2 py-1 rounded-full transition-colors"
+                  style={{
+                    background: activeFamily === fam.key ? fam.color : "transparent",
+                    color: activeFamily === fam.key ? "white" : fam.color,
+                    border: `1px solid ${fam.color}40`,
+                  }}
+                >
+                  {fam.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Descriptor list */}
+          <div className="max-h-52 overflow-y-auto p-2 space-y-3">
+            {filteredItems !== null ? (
+              filteredItems.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {filteredItems.map((item) => {
+                    const selected = selectedSet.has(item.label);
+                    return (
+                      <button
+                        key={item.label}
+                        onClick={() => addDescriptor(item.label, item.family)}
+                        disabled={selected}
+                        className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-all ${
+                          selected
+                            ? "opacity-40 cursor-not-allowed"
+                            : "hover:scale-105"
+                        } ${chipClasses(item.family)}`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-neutral-400 text-center py-4">No matches for &ldquo;{search}&rdquo;</p>
+              )
+            ) : (
+              DESCRIPTOR_FAMILIES.map((fam) => (
+                <div key={fam.key}>
+                  <p
+                    className="text-[10px] font-semibold uppercase tracking-wide mb-1.5"
+                    style={{ color: fam.color }}
+                  >
+                    {fam.label}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {fam.items.flatMap((g) =>
+                      g.descriptors.slice(0, 4).map((label) => {
+                        const selected = selectedSet.has(label);
+                        return (
+                          <button
+                            key={label}
+                            onClick={() => addDescriptor(label, fam.key)}
+                            disabled={selected}
+                            className={`text-xs font-medium px-2 py-0.5 rounded-full border transition-all ${
+                              selected ? "opacity-40 cursor-not-allowed" : "hover:scale-105"
+                            } ${chipClasses(fam.key)}`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {displayFamily && !search && (
+            <div className="px-3 pb-3">
+              <p className="text-[10px] text-neutral-400">
+                Showing {displayFamily.label} · click All to see everything
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Sample Card ──────────────────────────────────────────────────────────────
+
+function SampleCard({
+  sample: s,
+  onStartCupping,
+  onDelete,
+  onExport,
+  deleting,
+}: {
+  sample: SampleRow;
+  onStartCupping: () => void;
+  onDelete: () => void;
+  onExport: (type: "png" | "pdf") => void;
+  deleting: boolean;
+}) {
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+  const photos = (s.photos ?? []) as string[];
+  const descriptors = sampleDescriptors(s);
+  const familyCounts = useMemo(() => computeFamilyCounts(descriptors), [descriptors]);
+  const topDescriptors = descriptors.slice(0, 3);
+  const finalScore = s.finalScore ? parseFloat(s.finalScore) : null;
+  const tier = finalScore ? scoreTier(finalScore) : null;
+
+  useEffect(() => {
+    if (!exportOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) setExportOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [exportOpen]);
+
+  return (
+    <div className="bg-white border border-neutral-100 rounded-xl p-4 hover:border-neutral-200 transition-colors">
+      <div className="flex items-start justify-between gap-3">
+        {/* Left: info */}
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm text-neutral-900 truncate">{s.name}</span>
+            <Badge
+              variant="outline"
+              className={`text-[10px] font-medium px-1.5 py-0 border shrink-0 ${
+                s.status === "pending"
+                  ? "text-amber-600 border-amber-200 bg-amber-50"
+                  : "text-emerald-600 border-emerald-200 bg-emerald-50"
+              }`}
+            >
+              {s.status === "pending" ? "Pending" : "Cupped"}
+            </Badge>
+          </div>
+          <p className="text-xs text-neutral-400 truncate">
+            {[s.origin, s.variety, s.process, s.roast].filter(v => v && v !== "—").join(" · ") || "No details"}
+          </p>
+
+          {/* Descriptor chips */}
+          {topDescriptors.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {topDescriptors.map((d) => (
+                <DescriptorChip key={d.id} descriptor={d} />
+              ))}
+              {descriptors.length > 3 && (
+                <span className="text-[10px] text-neutral-400 self-center">+{descriptors.length - 3} more</span>
+              )}
+            </div>
+          )}
+
+          {photos.length > 0 && (
+            <div className="flex gap-1.5 pt-0.5">
+              {photos.slice(0, 3).map((url, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={url} alt={`photo ${i + 1}`} className="size-9 object-cover rounded-lg border border-neutral-200" />
+              ))}
+              {photos.length > 3 && (
+                <div className="size-9 rounded-lg border border-neutral-200 bg-neutral-50 flex items-center justify-center text-[10px] text-neutral-400">
+                  +{photos.length - 3}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right: wheel + score + actions */}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          {/* Mini wheel (only if complete) */}
+          {s.status === "complete" && (
+            <FlavorWheel familyCounts={familyCounts} size={72} showLabels={false} />
+          )}
+
+          {finalScore !== null && tier && (
+            <div className="text-right">
+              <p className="font-mono font-bold text-xl text-neutral-900 leading-none">
+                {finalScore.toFixed(2)}
+              </p>
+              <p className="text-[11px] font-semibold mt-0.5" style={{ color: tier.color }}>
+                {tier.label}
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1 items-end">
+            {s.status === "pending" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1.5 border-neutral-200"
+                onClick={onStartCupping}
+              >
+                <FlaskConical className="size-3.5" />
+                Start Cupping
+              </Button>
+            ) : (
+              <div ref={exportRef} className="relative">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1.5 border-neutral-200"
+                  onClick={() => setExportOpen((v) => !v)}
+                >
+                  <Download className="size-3.5" />
+                  Download
+                  <ChevronDown className="size-3 opacity-60" />
+                </Button>
+                {exportOpen && (
+                  <div className="absolute right-0 top-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-20 overflow-hidden min-w-[100px]">
+                    <button
+                      onClick={() => { onExport("png"); setExportOpen(false); }}
+                      className="w-full text-left px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-50 transition-colors"
+                    >
+                      Save as PNG
+                    </button>
+                    <button
+                      onClick={() => { onExport("pdf"); setExportOpen(false); }}
+                      className="w-full text-left px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-50 transition-colors"
+                    >
+                      Save as PDF
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-neutral-300 hover:text-red-500"
+              onClick={onDelete}
+              disabled={deleting}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Cupping Form ─────────────────────────────────────────────────────────────
+
+function CuppingForm({
+  sample: s,
+  scores,
+  descriptors,
+  onChange,
+  onDescriptorsChange,
+  onBack,
+  onSave,
+  saving,
+  exportCardRef,
+}: {
+  sample: SampleRow;
+  scores: Scores;
+  descriptors: DescriptorTag[];
+  onChange: (key: keyof Scores, value: string) => void;
+  onDescriptorsChange: (d: DescriptorTag[]) => void;
+  onBack: () => void;
+  onSave: () => void;
+  saving: boolean;
+  exportCardRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const liveScore = computeScore(scores);
+  const allAttrsFilled = SCA_ATTRS.every(
+    (a) => scores[a.key] !== "" && !isNaN(parseFloat(scores[a.key]))
+  );
+  const familyCounts = useMemo(() => computeFamilyCounts(descriptors), [descriptors]);
+  const topNotes = descriptors.slice(0, 3);
+  const tier = liveScore ? scoreTier(liveScore) : null;
+  const photos = (s.photos ?? []) as string[];
+
+  return (
+    <div className="max-w-5xl mx-auto px-6 py-8">
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-700 mb-6 transition-colors"
+      >
+        <ArrowLeft className="size-3" />
+        Back to samples
+      </button>
+
+      <div className="lg:grid lg:grid-cols-[1fr_272px] lg:gap-10">
+        {/* ── Left: form ── */}
+        <div className="space-y-8">
+          {/* Header */}
+          <div>
+            <h1 className="text-2xl font-bold font-heading text-neutral-900">{s.name}</h1>
+            <p className="text-sm text-neutral-400 mt-1">
+              {[s.origin, s.variety, s.process, s.roast].filter(v => v && v !== "—").join(" · ")}
+            </p>
+            {photos.length > 0 && (
+              <div className="flex gap-2 flex-wrap mt-3">
+                {photos.map((url, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={url} alt={`photo ${i + 1}`} className="size-12 object-cover rounded-lg border border-neutral-200" />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Mobile: score preview */}
+          <div className="lg:hidden flex items-center gap-4 p-4 bg-neutral-50 rounded-xl">
+            <FlavorWheel familyCounts={familyCounts} size={80} showLabels={false} />
+            <div>
+              <p className="text-xs text-neutral-400 mb-0.5">Live score</p>
+              <p className="font-mono font-bold text-3xl text-neutral-900 leading-none">
+                {liveScore !== null ? liveScore.toFixed(2) : "—"}
+              </p>
+              {tier && (
+                <p className="text-xs font-semibold mt-1" style={{ color: tier.color }}>{tier.label}</p>
+              )}
+            </div>
+          </div>
+
+          {/* SCA Attributes */}
+          <div>
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-4">SCA Attributes</p>
+            <div className="divide-y divide-neutral-100">
+              {SCA_ATTRS.map((attr) => (
+                <div key={attr.key} className="flex items-center justify-between py-3">
+                  <label className="text-sm text-neutral-700">{attr.label}</label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={6}
+                      max={10}
+                      step={0.25}
+                      placeholder="—"
+                      value={scores[attr.key as keyof Scores]}
+                      onChange={(e) => onChange(attr.key as keyof Scores, e.target.value)}
+                      className="h-8 w-20 text-right font-mono text-sm border-neutral-200"
+                    />
+                    <span className="text-xs text-neutral-300 w-6">/ 10</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-neutral-400 mt-2">6.00 – 10.00 in 0.25 increments.</p>
+          </div>
+
+          {/* Descriptors */}
+          <div>
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">Flavor Notes</p>
+            <DescriptorPicker descriptors={descriptors} onChange={onDescriptorsChange} />
+          </div>
+
+          {/* Per-Cup Checks */}
+          <div>
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-4">
+              Per-Cup Checks <span className="font-normal normal-case">· 5 cups × 2 pts each</span>
+            </p>
+            <div className="space-y-4">
+              {PER_CUP.map((check) => (
+                <div key={check.key} className="flex items-center justify-between">
+                  <p className="text-sm text-neutral-700">{check.label}</p>
+                  <div className="flex gap-1">
+                    {PER_CUP_OPTIONS.map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => onChange(check.key as keyof Scores, String(opt))}
+                        className={`font-mono text-xs w-8 h-7 rounded transition-colors border ${
+                          scores[check.key as keyof Scores] === String(opt)
+                            ? "bg-neutral-900 text-white border-neutral-900"
+                            : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400 hover:text-neutral-800"
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Defects */}
+          <div>
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-4">Defects</p>
+            <div className="space-y-3">
+              {[
+                { key: "taints", label: "Taints", note: "−2 pts each" },
+                { key: "faults", label: "Faults", note: "−4 pts each" },
+              ].map(({ key, label, note }) => (
+                <div key={key} className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-neutral-700">{label}</p>
+                    <p className="text-xs text-neutral-400">{note}</p>
+                  </div>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={5}
+                    step={1}
+                    value={scores[key as keyof Scores]}
+                    onChange={(e) => onChange(key as keyof Scores, e.target.value)}
+                    className="h-8 w-16 text-right font-mono text-sm border-neutral-200"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">Notes</p>
+            <textarea
+              value={scores.notes}
+              onChange={(e) => onChange("notes", e.target.value)}
+              placeholder="Tasting notes, impressions, comparisons…"
+              rows={3}
+              className="w-full border border-neutral-200 bg-white px-3 py-2 text-sm placeholder:text-neutral-300 focus:outline-none focus:border-neutral-400 resize-none rounded-xl"
+            />
+          </div>
+
+          {/* Save */}
+          <div className="flex items-center gap-3 pt-2 border-t border-neutral-100">
+            <Button onClick={onSave} disabled={!allAttrsFilled || saving} className="h-8 gap-2 text-sm">
+              {saving ? <Loader2 className="size-3.5 animate-spin" /> : "Save Session"}
+            </Button>
+            <Button variant="ghost" size="sm" className="text-neutral-400 text-xs" onClick={onBack}>
+              Discard
+            </Button>
+            {!allAttrsFilled && (
+              <p className="text-xs text-neutral-400">Fill all 7 attributes to save.</p>
+            )}
+          </div>
+        </div>
+
+        {/* ── Right: live preview panel ── */}
+        <div className="hidden lg:block">
+          <div className="sticky top-6 space-y-5">
+            {/* Flavor wheel */}
+            <div className="bg-neutral-50 rounded-2xl p-5 flex flex-col items-center gap-4">
+              <FlavorWheel
+                familyCounts={familyCounts}
+                size={220}
+                showLabels={true}
+              />
+
+              {/* Top notes */}
+              {topNotes.length > 0 && (
+                <div className="w-full">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400 mb-2 text-center">
+                    Top Notes
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {topNotes.map((d) => (
+                      <DescriptorChip key={d.id} descriptor={d} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Live score */}
+              <div className="w-full pt-3 border-t border-neutral-200 text-center">
+                <p className="text-[10px] text-neutral-400 uppercase tracking-wide mb-1">Final Score</p>
+                <p className="font-mono font-bold text-4xl text-neutral-900 leading-none">
+                  {liveScore !== null ? liveScore.toFixed(2) : "—"}
+                </p>
+                {tier && (
+                  <p className="text-xs font-semibold mt-1.5" style={{ color: tier.color }}>
+                    {tier.label}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Export buttons (only if score is ready) */}
+            {liveScore !== null && (
+              <div className="space-y-2">
+                <p className="text-[10px] text-neutral-400 uppercase tracking-wide text-center">Export Preview</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      if (!exportCardRef.current) return;
+                      toast.promise(downloadPNG(exportCardRef.current, `${s.name}.png`), {
+                        loading: "Generating PNG…",
+                        success: "Downloaded!",
+                        error: "Export failed",
+                      });
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-xs text-neutral-600 border border-neutral-200 rounded-lg h-8 hover:bg-neutral-50 transition-colors"
+                  >
+                    <Download className="size-3" />
+                    PNG
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!exportCardRef.current) return;
+                      toast.promise(downloadPDF(exportCardRef.current, `${s.name}.pdf`), {
+                        loading: "Generating PDF…",
+                        success: "Downloaded!",
+                        error: "Export failed",
+                      });
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-xs text-neutral-600 border border-neutral-200 rounded-lg h-8 hover:bg-neutral-50 transition-colors"
+                  >
+                    <Download className="size-3" />
+                    PDF
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Client Component ────────────────────────────────────────────────────
 
 export function SamplesClient({ initialSamples }: { initialSamples: SampleRow[] }) {
   const [samples, setSamples] = useState<SampleRow[]>(initialSamples);
   const [activeSampleId, setActiveSampleId] = useState<string | null>(null);
   const [scores, setScores] = useState<Scores>(DEFAULT_SCORES);
+  const [descriptors, setDescriptors] = useState<DescriptorTag[]>([]);
   const [showNewForm, setShowNewForm] = useState(false);
-  const [newSample, setNewSample] = useState({
-    name: "", origin: "", variety: "", process: "", roast: "",
-  });
+  const [newSample, setNewSample] = useState({ name: "", origin: "", variety: "", process: "", roast: "" });
   const [newPhotos, setNewPhotos] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
+  const exportCardRef = useRef<HTMLDivElement>(null);
+
+  // Per-sample export card ref for the samples list view
+  const [exportTarget, setExportTarget] = useState<{ sample: SampleRow; type: "png" | "pdf" } | null>(null);
+  const listExportRef = useRef<HTMLDivElement>(null);
 
   const activeSample = samples.find((s) => s.id === activeSampleId) ?? null;
 
@@ -216,11 +999,13 @@ export function SamplesClient({ initialSamples }: { initialSamples: SampleRow[] 
       faults: s.faults ?? "0",
       notes: s.notes ?? "",
     });
+    setDescriptors(sampleDescriptors(s));
   }
 
   function handleBack() {
     setActiveSampleId(null);
     setScores(DEFAULT_SCORES);
+    setDescriptors([]);
   }
 
   function handleScoreChange(key: keyof Scores, value: string) {
@@ -231,18 +1016,20 @@ export function SamplesClient({ initialSamples }: { initialSamples: SampleRow[] 
     if (!activeSampleId) return;
     const score = computeScore(scores);
     if (score === null) return;
+    const storedDescriptors: StoredDescriptor[] = descriptors.map(({ label, family }) => ({ label, family }));
 
     startTransition(async () => {
-      await saveCuppingSession(activeSampleId, scores, score);
+      await saveCuppingSession(activeSampleId, scores, storedDescriptors, score);
       setSamples((prev) =>
         prev.map((s) =>
           s.id === activeSampleId
-            ? { ...s, ...scores, status: "complete", finalScore: String(score) }
+            ? { ...s, ...scores, descriptors: storedDescriptors, status: "complete", finalScore: String(score) }
             : s
         )
       );
       setActiveSampleId(null);
       setScores(DEFAULT_SCORES);
+      setDescriptors([]);
       toast.success("Session saved");
     });
   }
@@ -263,20 +1050,60 @@ export function SamplesClient({ initialSamples }: { initialSamples: SampleRow[] 
     startTransition(async () => {
       await deleteSample(id);
       setSamples((prev) => prev.filter((s) => s.id !== id));
+      if (activeSampleId === id) handleBack();
       toast.success("Sample deleted");
     });
   }
 
+  const handleExport = useCallback((sample: SampleRow, type: "png" | "pdf") => {
+    setExportTarget({ sample, type });
+  }, []);
+
+  // Trigger export once exportTarget is set and ref is populated
+  useEffect(() => {
+    if (!exportTarget || !listExportRef.current) return;
+    const el = listExportRef.current;
+    const { sample, type } = exportTarget;
+    const filename = `${sample.name.replace(/[^a-z0-9]/gi, "_")}.${type}`;
+
+    if (type === "png") {
+      toast.promise(downloadPNG(el, filename), {
+        loading: "Generating PNG…", success: "Downloaded!", error: "Export failed",
+      });
+    } else {
+      toast.promise(downloadPDF(el, filename), {
+        loading: "Generating PDF…", success: "Downloaded!", error: "Export failed",
+      });
+    }
+    setExportTarget(null);
+  }, [exportTarget]);
+
   if (activeSample) {
     return (
-      <CuppingForm
-        sample={activeSample}
-        scores={scores}
-        onChange={handleScoreChange}
-        onBack={handleBack}
-        onSave={handleSaveSession}
-        saving={isPending}
-      />
+      <>
+        <CuppingForm
+          sample={activeSample}
+          scores={scores}
+          descriptors={descriptors}
+          onChange={handleScoreChange}
+          onDescriptorsChange={setDescriptors}
+          onBack={handleBack}
+          onSave={handleSaveSession}
+          saving={isPending}
+          exportCardRef={exportCardRef}
+        />
+        {/* Hidden export card for cupping form downloads */}
+        <div style={{ position: "fixed", left: -9999, top: 0, pointerEvents: "none" }}>
+          <div ref={exportCardRef}>
+            <ExportCard
+              sample={activeSample}
+              scores={scores}
+              descriptors={descriptors}
+              liveScore={computeScore(scores)}
+            />
+          </div>
+        </div>
+      </>
     );
   }
 
@@ -286,15 +1113,9 @@ export function SamplesClient({ initialSamples }: { initialSamples: SampleRow[] 
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold font-heading text-neutral-900">Samples</h1>
-          <p className="text-sm text-neutral-500 mt-1">
-            Log received samples and run cupping sessions.
-          </p>
+          <p className="text-sm text-neutral-500 mt-1">Log received samples and run cupping sessions.</p>
         </div>
-        <Button
-          size="sm"
-          className="gap-2 h-8 text-sm shrink-0"
-          onClick={() => setShowNewForm((v) => !v)}
-        >
+        <Button size="sm" className="gap-2 h-8 text-sm shrink-0" onClick={() => setShowNewForm((v) => !v)}>
           <Plus className="size-3.5" />
           Log Sample
         </Button>
@@ -302,7 +1123,7 @@ export function SamplesClient({ initialSamples }: { initialSamples: SampleRow[] 
 
       {/* New sample form */}
       {showNewForm && (
-        <div className="border border-neutral-100 rounded-md p-5 space-y-4 bg-neutral-50">
+        <div className="border border-neutral-100 rounded-xl p-5 space-y-4 bg-neutral-50">
           <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">New Sample</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="md:col-span-2">
@@ -316,66 +1137,36 @@ export function SamplesClient({ initialSamples }: { initialSamples: SampleRow[] 
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1.5 block">Origin</label>
-              <Input
-                placeholder="e.g. Ethiopia"
-                value={newSample.origin}
-                onChange={(e) => setNewSample((p) => ({ ...p, origin: e.target.value }))}
-                className="h-8 text-sm border-neutral-200"
-              />
+              <Input placeholder="e.g. Ethiopia" value={newSample.origin} onChange={(e) => setNewSample((p) => ({ ...p, origin: e.target.value }))} className="h-8 text-sm border-neutral-200" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1.5 block">Variety</label>
-              <Input
-                placeholder="e.g. Heirloom"
-                value={newSample.variety}
-                onChange={(e) => setNewSample((p) => ({ ...p, variety: e.target.value }))}
-                className="h-8 text-sm border-neutral-200"
-              />
+              <Input placeholder="e.g. Heirloom" value={newSample.variety} onChange={(e) => setNewSample((p) => ({ ...p, variety: e.target.value }))} className="h-8 text-sm border-neutral-200" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1.5 block">Process</label>
-              <Input
-                placeholder="e.g. Washed"
-                value={newSample.process}
-                onChange={(e) => setNewSample((p) => ({ ...p, process: e.target.value }))}
-                className="h-8 text-sm border-neutral-200"
-              />
+              <Input placeholder="e.g. Washed" value={newSample.process} onChange={(e) => setNewSample((p) => ({ ...p, process: e.target.value }))} className="h-8 text-sm border-neutral-200" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1.5 block">Roast</label>
-              <Input
-                placeholder="e.g. Light"
-                value={newSample.roast}
-                onChange={(e) => setNewSample((p) => ({ ...p, roast: e.target.value }))}
-                className="h-8 text-sm border-neutral-200"
-              />
+              <Input placeholder="e.g. Light" value={newSample.roast} onChange={(e) => setNewSample((p) => ({ ...p, roast: e.target.value }))} className="h-8 text-sm border-neutral-200" />
             </div>
             <div className="md:col-span-2">
               <PhotoUploader photos={newPhotos} onChange={setNewPhotos} />
             </div>
           </div>
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              className="h-7 text-xs"
-              onClick={handleLogSample}
-              disabled={!newSample.name.trim() || isPending}
-            >
+            <Button size="sm" className="h-7 text-xs" onClick={handleLogSample} disabled={!newSample.name.trim() || isPending}>
               {isPending ? <Loader2 className="size-3 animate-spin" /> : "Add to queue"}
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs text-neutral-400"
-              onClick={() => { setShowNewForm(false); setNewPhotos([]); }}
-            >
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-neutral-400" onClick={() => { setShowNewForm(false); setNewPhotos([]); }}>
               Cancel
             </Button>
           </div>
         </div>
       )}
 
-      {/* Sample list */}
+      {/* Sample grid */}
       {samples.length === 0 ? (
         <div className="py-16 text-center">
           <FlaskConical className="size-6 text-neutral-300 mx-auto mb-3" />
@@ -383,287 +1174,47 @@ export function SamplesClient({ initialSamples }: { initialSamples: SampleRow[] 
           <p className="text-xs text-neutral-400">Log a received sample to start a cupping session.</p>
         </div>
       ) : (
-        <div className="divide-y divide-neutral-100">
+        <div className="grid gap-3">
           {samples.map((s) => (
-            <SampleRow
+            <SampleCard
               key={s.id}
               sample={s}
               onStartCupping={() => startCupping(s.id)}
               onDelete={() => handleDelete(s.id)}
+              onExport={(type) => handleExport(s, type)}
               deleting={isPending}
             />
           ))}
         </div>
       )}
-    </div>
-  );
-}
 
-// ─── Sample Row ───────────────────────────────────────────────────────────────
-
-function SampleRow({
-  sample: s,
-  onStartCupping,
-  onDelete,
-  deleting,
-}: {
-  sample: SampleRow;
-  onStartCupping: () => void;
-  onDelete: () => void;
-  deleting: boolean;
-}) {
-  const photos = (s.photos ?? []) as string[];
-  return (
-    <div className="py-4 flex items-start justify-between gap-4">
-      <div className="space-y-1.5 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-sm text-neutral-900">{s.name}</span>
-          <Badge
-            variant="outline"
-            className={`text-[10px] font-medium px-1.5 py-0 border ${
-              s.status === "pending"
-                ? "text-amber-600 border-amber-200 bg-amber-50"
-                : "text-neutral-400 border-neutral-200 bg-transparent"
-            }`}
-          >
-            {s.status === "pending" ? "Pending" : "Cupped"}
-          </Badge>
-        </div>
-        <p className="text-xs text-neutral-400">
-          {s.origin} · {s.variety} · {s.process} · {s.roast}
-        </p>
-        <p className="text-xs text-neutral-400">
-          Received{" "}
-          {new Date(s.dateReceived).toLocaleDateString("en-US", {
-            month: "short", day: "numeric", year: "numeric",
-          })}
-        </p>
-        {photos.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap pt-1">
-            {photos.map((url, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={url}
-                alt={`Sample photo ${i + 1}`}
-                className="size-10 object-cover rounded border border-neutral-200"
-              />
-            ))}
+      {/* Hidden export card for list-view downloads */}
+      {exportTarget && (
+        <div style={{ position: "fixed", left: -9999, top: 0, pointerEvents: "none" }}>
+          <div ref={listExportRef}>
+            <ExportCard
+              sample={exportTarget.sample}
+              scores={{
+                fragrance: exportTarget.sample.fragrance ?? "",
+                flavor: exportTarget.sample.flavor ?? "",
+                aftertaste: exportTarget.sample.aftertaste ?? "",
+                acidity: exportTarget.sample.acidity ?? "",
+                body: exportTarget.sample.body ?? "",
+                balance: exportTarget.sample.balance ?? "",
+                overall: exportTarget.sample.overall ?? "",
+                uniformity: exportTarget.sample.uniformity ?? "10",
+                cleanCup: exportTarget.sample.cleanCup ?? "10",
+                sweetness: exportTarget.sample.sweetness ?? "10",
+                taints: exportTarget.sample.taints ?? "0",
+                faults: exportTarget.sample.faults ?? "0",
+                notes: exportTarget.sample.notes ?? "",
+              }}
+              descriptors={sampleDescriptors(exportTarget.sample)}
+              liveScore={exportTarget.sample.finalScore ? parseFloat(exportTarget.sample.finalScore) : null}
+            />
           </div>
-        )}
-      </div>
-      <div className="flex items-center gap-3 shrink-0">
-        {s.status === "complete" && s.finalScore !== null && s.finalScore !== undefined && (
-          <div className="text-right">
-            <p className="font-mono font-bold text-lg text-neutral-900">
-              {parseFloat(s.finalScore).toFixed(2)}
-            </p>
-            <p className={`text-xs ${scoreTier(parseFloat(s.finalScore)).className}`}>
-              {scoreTier(parseFloat(s.finalScore)).label}
-            </p>
-          </div>
-        )}
-        <div className="flex flex-col gap-1.5">
-          {s.status === "pending" && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs gap-1.5 border-neutral-200"
-              onClick={onStartCupping}
-            >
-              <FlaskConical className="size-3.5" />
-              Start Cupping
-            </Button>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs text-neutral-300 hover:text-red-500"
-            onClick={onDelete}
-            disabled={deleting}
-          >
-            Delete
-          </Button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Cupping Form ─────────────────────────────────────────────────────────────
-
-function CuppingForm({
-  sample: s,
-  scores,
-  onChange,
-  onBack,
-  onSave,
-  saving,
-}: {
-  sample: SampleRow;
-  scores: Scores;
-  onChange: (key: keyof Scores, value: string) => void;
-  onBack: () => void;
-  onSave: () => void;
-  saving: boolean;
-}) {
-  const liveScore = computeScore(scores);
-  const allAttrsFilled = SCA_ATTRS.every(
-    (a) => scores[a.key] !== "" && !isNaN(parseFloat(scores[a.key]))
-  );
-  const photos = (s.photos ?? []) as string[];
-
-  return (
-    <div className="max-w-4xl mx-auto px-6 py-8 space-y-10">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-6">
-        <div>
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-700 mb-3 transition-colors"
-          >
-            <ArrowLeft className="size-3" />
-            Back to samples
-          </button>
-          <h1 className="text-2xl font-bold font-heading text-neutral-900">{s.name}</h1>
-          <p className="text-sm text-neutral-400 mt-1">
-            {s.origin} · {s.variety} · {s.process} · {s.roast}
-          </p>
-          {photos.length > 0 && (
-            <div className="flex gap-2 flex-wrap mt-3">
-              {photos.map((url, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={i}
-                  src={url}
-                  alt={`Sample photo ${i + 1}`}
-                  className="size-14 object-cover rounded border border-neutral-200"
-                />
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="text-right shrink-0">
-          <p className="text-xs text-neutral-400 mb-0.5">Final score</p>
-          <p className="font-mono font-bold text-4xl text-neutral-900 leading-none">
-            {liveScore !== null ? liveScore.toFixed(2) : "—"}
-          </p>
-          {liveScore !== null && (
-            <p className={`text-xs mt-1 ${scoreTier(liveScore).className}`}>
-              {scoreTier(liveScore).label}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* SCA Attributes */}
-      <div>
-        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-4">
-          SCA Attributes
-        </p>
-        <div className="divide-y divide-neutral-100">
-          {SCA_ATTRS.map((attr) => (
-            <div key={attr.key} className="flex items-center justify-between py-2.5">
-              <label className="text-sm text-neutral-700">{attr.label}</label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={6}
-                  max={10}
-                  step={0.25}
-                  placeholder="—"
-                  value={scores[attr.key]}
-                  onChange={(e) => onChange(attr.key, e.target.value)}
-                  className="h-8 w-20 text-right font-mono text-sm border-neutral-200"
-                />
-                <span className="text-xs text-neutral-300 w-6">/ 10</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="text-[11px] text-neutral-400 mt-2">6.00 – 10.00 in 0.25 increments.</p>
-      </div>
-
-      {/* Per-cup checks */}
-      <div>
-        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-4">
-          Per-Cup Checks <span className="font-normal normal-case">· 5 cups × 2 pts each</span>
-        </p>
-        <div className="space-y-4">
-          {PER_CUP.map((check) => (
-            <div key={check.key} className="flex items-center justify-between">
-              <p className="text-sm text-neutral-700">{check.label}</p>
-              <div className="flex gap-1">
-                {PER_CUP_OPTIONS.map((opt) => (
-                  <button
-                    key={opt}
-                    onClick={() => onChange(check.key, String(opt))}
-                    className={`font-mono text-xs w-8 h-7 border transition-colors ${
-                      scores[check.key] === String(opt)
-                        ? "bg-neutral-900 text-white border-neutral-900"
-                        : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400 hover:text-neutral-800"
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Defects */}
-      <div>
-        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-4">Defects</p>
-        <div className="space-y-3">
-          {[
-            { key: "taints", label: "Taints", note: "−2 pts each" },
-            { key: "faults", label: "Faults", note: "−4 pts each" },
-          ].map(({ key, label, note }) => (
-            <div key={key} className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-700">{label}</p>
-                <p className="text-xs text-neutral-400">{note}</p>
-              </div>
-              <Input
-                type="number"
-                min={0}
-                max={5}
-                step={1}
-                value={scores[key as keyof Scores]}
-                onChange={(e) => onChange(key as keyof Scores, e.target.value)}
-                className="h-8 w-16 text-right font-mono text-sm border-neutral-200"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Notes */}
-      <div>
-        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">Notes</p>
-        <textarea
-          value={scores.notes}
-          onChange={(e) => onChange("notes", e.target.value)}
-          placeholder="Tasting notes, impressions, comparisons…"
-          rows={3}
-          className="w-full border border-neutral-200 bg-white px-3 py-2 text-sm placeholder:text-neutral-300 focus:outline-none focus:border-neutral-400 resize-none rounded-md"
-        />
-      </div>
-
-      {/* Save */}
-      <div className="flex items-center gap-3 pt-2 border-t border-neutral-100">
-        <Button onClick={onSave} disabled={!allAttrsFilled || saving} className="h-8 gap-2 text-sm">
-          {saving ? <Loader2 className="size-3.5 animate-spin" /> : "Save Session"}
-        </Button>
-        <Button variant="ghost" size="sm" className="text-neutral-400 text-xs" onClick={onBack}>
-          Discard
-        </Button>
-        {!allAttrsFilled && (
-          <p className="text-xs text-neutral-400">Fill all 7 attributes to save.</p>
-        )}
-      </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "sample" ADD COLUMN "descriptors" jsonb DEFAULT '[]'::jsonb NOT NULL;
