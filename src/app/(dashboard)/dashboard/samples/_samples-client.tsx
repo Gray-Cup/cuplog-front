@@ -39,6 +39,7 @@ type Scores = {
   taints: string;
   faults: string;
   notes: string;
+  roast: string;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -61,6 +62,14 @@ const PER_CUP = [
 
 const PER_CUP_OPTIONS = [0, 2, 4, 6, 8, 10];
 
+const ROAST_LEVELS = [
+  { key: "light",       label: "Light",       bg: "#F5E6C8", text: "#92632A" },
+  { key: "medium-light",label: "Med-Light",   bg: "#D4A96A", text: "#5C3310" },
+  { key: "medium",      label: "Medium",      bg: "#A0643A", text: "#fff"    },
+  { key: "medium-dark", label: "Med-Dark",    bg: "#6B3A20", text: "#fff"    },
+  { key: "dark",        label: "Dark",        bg: "#2E1A0E", text: "#fff"    },
+] as const;
+
 const DEFAULT_SCORES: Scores = {
   fragrance: "",
   flavor: "",
@@ -75,6 +84,7 @@ const DEFAULT_SCORES: Scores = {
   taints: "0",
   faults: "0",
   notes: "",
+  roast: "",
 };
 
 const MAX_PHOTOS = 5;
@@ -164,7 +174,7 @@ function ExportCard({
     >
       {/* Header bar */}
       <div style={{ background: "#f8f7ff", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e", letterSpacing: "-0.01em" }}>CupLog</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e", letterSpacing: "-0.01em" }}>CupLog by Gray Cup</span>
         <span style={{ fontSize: 12, color: "#9ca3af" }}>{date}</span>
       </div>
 
@@ -182,7 +192,7 @@ function ExportCard({
 
         {/* Flavor Wheel */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-          <FlavorWheel familyCounts={familyCounts} size={200} showLabels={true} />
+          <FlavorWheel familyCounts={familyCounts} descriptors={topDescriptors} size={200} showLabels={true} />
         </div>
 
         {/* Descriptors */}
@@ -392,12 +402,6 @@ function DescriptorPicker({
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Selected chips */}
-      <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
-        {descriptors.map((d) => (
-          <DescriptorChip key={d.id} descriptor={d} onRemove={() => removeDescriptor(d.id)} />
-        ))}
-      </div>
 
       {/* Add button */}
       <button
@@ -825,7 +829,7 @@ function CuppingForm({
         Back to samples
       </button>
 
-      <div className="lg:grid lg:grid-cols-[1fr_272px] lg:gap-10">
+      <div className="lg:grid lg:gap-10">
         {/* ── Left: form ── */}
         <div className="space-y-8">
           {/* Header */}
@@ -846,7 +850,7 @@ function CuppingForm({
 
           {/* Flavor Wheel Banner */}
           <div className="flex items-center gap-5 bg-neutral-50 rounded-2xl p-5">
-            <FlavorWheel familyCounts={familyCounts} size={96} showLabels={false} />
+            <FlavorWheel familyCounts={familyCounts} descriptors={descriptors} size={96} showLabels={false} />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-neutral-400 uppercase tracking-wide mb-1">Live Score</p>
               <p className="font-mono font-bold text-4xl text-neutral-900 leading-none tabular-nums">
@@ -863,6 +867,38 @@ function CuppingForm({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Roast Level */}
+          <div>
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">Roast Level</p>
+            <div className="flex gap-2 flex-wrap">
+              {ROAST_LEVELS.map((r) => {
+                const active = scores.roast === r.key;
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => onChange("roast", active ? "" : r.key)}
+                    className="flex flex-col items-center gap-1.5 rounded-xl px-4 py-3 border-2 transition-all hover:scale-105"
+                    style={{
+                      background: r.bg,
+                      borderColor: active ? r.text === "#fff" ? "rgba(255,255,255,0.6)" : r.bg : "transparent",
+                      boxShadow: active ? `0 0 0 2px ${r.bg}` : "none",
+                      outline: active ? `2px solid ${r.bg}` : "none",
+                      outlineOffset: "2px",
+                    }}
+                  >
+                    <span
+                      className="text-xs font-semibold whitespace-nowrap"
+                      style={{ color: r.text }}
+                    >
+                      {r.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* SCA Attributes */}
@@ -1042,6 +1078,7 @@ export function SamplesClient({ initialSamples }: { initialSamples: SampleRow[] 
       taints: s.taints ?? "0",
       faults: s.faults ?? "0",
       notes: s.notes ?? "",
+      roast: "",
     });
     setDescriptors(sampleDescriptors(s));
   }
@@ -1252,6 +1289,7 @@ export function SamplesClient({ initialSamples }: { initialSamples: SampleRow[] 
                 taints: exportTarget.sample.taints ?? "0",
                 faults: exportTarget.sample.faults ?? "0",
                 notes: exportTarget.sample.notes ?? "",
+                roast: "",
               }}
               descriptors={sampleDescriptors(exportTarget.sample)}
               liveScore={exportTarget.sample.finalScore ? parseFloat(exportTarget.sample.finalScore) : null}
